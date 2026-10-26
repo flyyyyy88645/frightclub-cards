@@ -32,11 +32,19 @@ def treat_bg(path, cx=.5, blur=0, bright=1.0):
     return base64.b64encode(buf.getvalue()).decode()
 
 def sliced(text, size, split=54, shift=14, line=7):
+    if '\n' not in text:  # одна строка — линия под словом, без «зачёркивания»
+        base = f"font-family:T;font-size:{size}px;line-height:.86;color:#E8E2D6;text-transform:uppercase;white-space:pre;padding:0 .12em 0 .02em"
+        return (f'<div style="position:relative;display:inline-block"><div style="{base}">{text}</div>'
+                f'<div style="margin:22px 0 0 -12px;width:min(100%,560px);height:{line}px;background:#C1121F;transform:rotate(-1deg)"></div></div>')
     base = f"font-family:T;font-size:{size}px;line-height:.86;color:#E8E2D6;text-transform:uppercase;white-space:pre;padding:0 .12em 0 .02em"
     return (f'<div style="position:relative;display:inline-block"><div style="{base};visibility:hidden">{text}</div>'
             f'<div style="{base};position:absolute;inset:0;clip-path:inset(-20% -10% {100-split}% -10%)">{text}</div>'
             f'<div style="{base};position:absolute;inset:0;clip-path:inset({split}% -10% -20% -10%);transform:translateX({shift}px)">{text}</div>'
             f'<div style="position:absolute;left:-24px;right:-24px;top:calc({split}% - {line/2}px);height:{line}px;background:#C1121F;transform:rotate(-1deg)"></div></div>')
+
+def plain(text, size):
+    base = f"font-family:T;font-size:{size}px;line-height:.86;color:#E8E2D6;text-transform:uppercase;white-space:pre;padding:0 .12em 0 .02em"
+    return f'<div style="{base}">{text}</div>'
 
 def auto(big):
     lines = big.split('\n'); L = max(len(x) for x in lines)
@@ -55,11 +63,12 @@ def build(cfg):
 <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,11,12,.55) 0%,rgba(11,11,12,0) 30%,rgba(11,11,12,0) 45%,rgba(11,11,12,.92) 78%,#0B0B0C 100%)"></div>
 {mark}<div style="position:absolute;left:72px;right:100px;top:{cfg.get('hook_top', 1030)}px">{sliced(cfg['hook'], hs, hsplit)}
 <div class="small" style="margin-top:40px">{cfg['sub']}</div></div></div>''')
-    for s in cfg['slides']:
+    for n, s in enumerate(cfg['slides']):
         big, body = s[0], s[1]; foot = s[2] if len(s) > 2 else ''
         size, split = auto(big)
+        head = sliced(big, size, split) if n == cfg.get('key', -1) else plain(big, size)
         slides.append(f'<div class="c">{mark}<div style="position:absolute;left:72px;right:150px;top:260px;bottom:420px;display:flex;flex-direction:column;justify-content:center">'
-                      f'<div>{sliced(big, size, split)}</div><div class="body" style="margin-top:70px">{body}</div>'
+                      f'<div>{head}</div><div class="body" style="margin-top:70px">{body}</div>'
                       + (f'<div class="q">{foot}</div>' if foot else '') + '</div></div>')
     endbg = treat_bg(img, cfg.get('cx', .5), 26, .32)
     fsize, fsplit = auto(cfg['final_big']); fsize = min(fsize, 230)
