@@ -11,7 +11,7 @@
 - **Новости:** `horror_news` (RSS: Bloody Disgusting, Dread Central, iHorror, /Film Horror, Horror Society; параметры `hours`, `query`, `sources`) — быстрее и дешевле веб-поиска для «что нового». `horror_digest` — подборка (ручной запуск — worker.md).
 - **YouTube:** `youtube_search` (`hours`, `order=viewCount`, `shorts`), `youtube_comments` (ключ задан 31.10.2026), `youtube_transcript` — текст видео из субтитров без ключа, длинное частями через `offset`; некоторые видео YouTube закрывает для Cloudflare проверкой «не бот» — тогда Тимур присылает «Показать текст видео».
 - **Internet Archive:** `archive_search` (хорроры из коллекции feature_films) → `archive_item` (прямые ссылки на mp4 по размеру и на субтитры; поле `license`).
-- **Reddit:** `reddit_top` (top/hot/new/rising/controversial, несколько сабов через `+`, `after`, `min_score`), `reddit_search`, `reddit_post` (полный текст + топ-комментарии) — появятся после одобрения заявки (worker.md).
+- **Reddit:** в воркере нет (заявку отклонили 1.11.2026, worker.md).
 - **Архив отправленного:** `digest_history` (подборки и новости, точный текст, 30 дней; `full: false` — кратко).
 - **Агент:** `agent_setup` / `agent_ask` (worker.md).
 - **TikTok:** `tiktok_auth`, `tiktok_upload`, `tiktok_status` (tiktok.md).

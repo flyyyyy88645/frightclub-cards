@@ -8,7 +8,7 @@
 
 - `MCP_KEY`, `TELEGRAM_BOT_TOKEN`, `DEFAULT_CHAT_ID` (= @frightclub88), `TMDB_TOKEN`, `OMDB_API_KEY`.
 - TikTok: `TIKTOK_CLIENT_SECRET` (Secret), `TIKTOK_CLIENT_KEY` (необязательно — в коде зашит sandbox-ключ), биндинг KV `TIKTOK_KV` → namespace `frightclub-tiktok` (доступ к TikTok и метки отправки подборки/новостей).
-- С 1.4–1.6: `DIGEST_CHAT_ID` (Text, = 249823375, личка Тимура — куда идут подборка и новости), `ALERT_CHAT_ID` (необязательно, по умолчанию = DIGEST_CHAT_ID), `YOUTUBE_API_KEY` (Secret), `REDDIT_CLIENT_ID` (Text) / `REDDIT_CLIENT_SECRET` (Secret) / `REDDIT_USERNAME` (Text, tunetim), `NEWS_FEEDS` (необязательно, свои ленты «Название|url» по строкам), биндинг Workers AI `AI` (необязательно, перевод описаний).
+- С 1.4–1.6: `DIGEST_CHAT_ID` (Text, = 249823375, личка Тимура — куда идут подборка и новости), `ALERT_CHAT_ID` (необязательно, по умолчанию = DIGEST_CHAT_ID), `YOUTUBE_API_KEY` (Secret), `NEWS_FEEDS` (необязательно, свои ленты «Название|url» по строкам), биндинг Workers AI `AI` (необязательно, перевод описаний).
 - С 1.7–1.8 (заданы 31.10.2026):
   - `DIGEST_BOT_TOKEN` (Secret) — второй бот **@horrordigestbot**: подборка, новости, алерты и агент. Если он не может написать (не нажат Start) — сообщение уходит через @frightclubai с пометкой ⚠️.
   - `GEMINI_API_KEY` (Secret) — Gemini API, проект `frightclub` в Google Cloud; ключ «gemini-worker» привязан к сервисному аккаунту (так требует Google). Создаётся в APIs & Services → Credentials → API key → restriction Gemini API, а не в AI Studio (там «permission denied»).
@@ -38,15 +38,13 @@
 - Повторы с таймаутом к TMDB/OMDb/лентам (OMDb «Error getting data» с кодом 200 тоже повторяется; нет оценок — строка не выводится); один упавший фильм или лента не роняет подборку.
 - Сбой → алерт ⚠️ в личку (ALERT_CHAT_ID или DIGEST_CHAT_ID), метка снимается — можно перезапустить вручную.
 - Лимит Cloudflare (бесплатный план): 50 запросов наружу за один запуск, каждый повтор fetchRetry тоже считается. На этом упала 1.7.3 («Too many subrequests»). Сейчас подборка ~27, худший случай ~41.
-- Ключи в `TIKTOK_KV`: `digest:sent:<дата>`, `news:sent:<дата>:<час>`, `news:seen` (отправленные ссылки, 4 дня), `reddit:token`, `log:<дата>:<время>:<digest|news>` (архив отправленного, 30 дней — читается `digest_history`).
+- Ключи в `TIKTOK_KV`: `digest:sent:<дата>`, `news:sent:<дата>:<час>`, `news:seen` (отправленные ссылки, 4 дня), `log:<дата>:<время>:<digest|news>` (архив отправленного, 30 дней — читается `digest_history`).
 
 ## Ручной запуск
 `horror_digest` (без send — только текст; `send: true` — в личку, раз в день; `force: true` — повторно), `horror_news` с `send: true` (и `force`).
 
-## Reddit
-- Заявка на Data API подана 31.10.2026: support.reddithelp.com → Submit a request → Data Access Request → I'm a developer → «Reddit App that does not work in the Devvit ecosystem»; аккаунт u/tunetim; ответ — на почту Тимура, от дней до недель, бывает без ответа. Создание приложения (reddit.com/prefs/apps) закрыто до одобрения. Неавторизованный `.json` не работает с мая 2026; reddit.com из песочницы не открывается.
-- После одобрения: script-приложение `frightclub-reader`, redirect `http://localhost:8080`, about url `https://t.me/frightclub88` → переменные REDDIT_CLIENT_ID / REDDIT_CLIENT_SECRET / REDDIT_USERNAME → появятся `reddit_top`, `reddit_search`, `reddit_post`.
-- Заявлено: только чтение хоррор-сабов (nosleep, LetsNotMeet, Thetruthishere, shortscarystories, creepyencounters, scarystories, TrueScaryStories, HorrorStories, creepypasta, Paranormal, Glitch_in_the_Matrix, UnresolvedMysteries) и киносабов (horror, movies, TrueFilm, flicks, Filmmakers, cinematography, boxoffice) — для идей сценариев, учёбы и тем канала, без хранения и обучения моделей.
+## Reddit (закрыто)
+Заявку на Data API (подана 31.10.2026 от u/tunetim) отклонили 1.11.2026; в воркере Reddit нет — переменных и инструментов `reddit_*` нет. Неавторизованный `.json` не работает с мая 2026; reddit.com из песочницы не открывается.
 
 ## ИИ-агент в @horrordigestbot (с 1.8.0)
 - Зачем: Тимур хочет развивать не бота, а ИИ-агента, и сам учится строить агентов; требование — не быть привязанным к модели.
