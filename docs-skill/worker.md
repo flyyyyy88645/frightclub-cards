@@ -1,0 +1,60 @@
+# Воркер frightclub-tg: переменные, cron, подборка, агент, Reddit
+
+> Справочник скилла horror-news-digest. Правила работы — только в скилле (раздел 5a); здесь — данные. Правится коммитом без карточки скилла.
+> Читать перед любой работой с воркером, cron, переменными, подборкой, агентом или Reddit.
+
+## Переменные (Cloudflare → frightclub-tg → Settings)
+В форме Cloudflare Key — имя переменной, Value — значение (не наоборот).
+
+- `MCP_KEY`, `TELEGRAM_BOT_TOKEN`, `DEFAULT_CHAT_ID` (= @frightclub88), `TMDB_TOKEN`, `OMDB_API_KEY`.
+- TikTok: `TIKTOK_CLIENT_SECRET` (Secret), `TIKTOK_CLIENT_KEY` (необязательно — в коде зашит sandbox-ключ), биндинг KV `TIKTOK_KV` → namespace `frightclub-tiktok` (доступ к TikTok и метки отправки подборки/новостей).
+- С 1.4–1.6: `DIGEST_CHAT_ID` (Text, = 249823375, личка Тимура — куда идут подборка и новости), `ALERT_CHAT_ID` (необязательно, по умолчанию = DIGEST_CHAT_ID), `YOUTUBE_API_KEY` (Secret), `REDDIT_CLIENT_ID` (Text) / `REDDIT_CLIENT_SECRET` (Secret) / `REDDIT_USERNAME` (Text, tunetim), `NEWS_FEEDS` (необязательно, свои ленты «Название|url» по строкам), биндинг Workers AI `AI` (необязательно, перевод описаний).
+- С 1.7–1.8 (заданы 31.10.2026):
+  - `DIGEST_BOT_TOKEN` (Secret) — второй бот **@horrordigestbot**: подборка, новости, алерты и агент. Если он не может написать (не нажат Start) — сообщение уходит через @frightclubai с пометкой ⚠️.
+  - `GEMINI_API_KEY` (Secret) — Gemini API, проект `frightclub` в Google Cloud; ключ «gemini-worker» привязан к сервисному аккаунту (так требует Google). Создаётся в APIs & Services → Credentials → API key → restriction Gemini API, а не в AI Studio (там «permission denied»).
+  - `GEMINI_MODEL` (Text) = `gemini-flash-lite-latest` — для подборки (полная flash днём часто 503/таймаут).
+  - `AGENT_MODEL` (Text, необязательно) — модель агента, по умолчанию `gemini-flash-latest`.
+  - `TRAILER_CHANNELS` (Text, необязательно) — доп. каналы для трейлеров через запятую.
+  - Биндинг KV `AGENT_KV` → namespace `frightclub-agent` (память агента; отдельно от TIKTOK_KV).
+- Ключ YouTube — «API key 1» в том же проекте Google Cloud. Как получить: console.cloud.google.com → проект → APIs & Services → Library → YouTube Data API v3 → Enable → Credentials → Create credentials → API key → API restrictions: только YouTube Data API v3 → в Cloudflare `YOUTUBE_API_KEY` (Secret). Квота 10 000 единиц/день, поиск = 100.
+
+## Код
+Один JS-файл без сборки (не index.ts), актуальная версия — в Cloudflare (Edit code); в GitHub его нет. Версия — в константе `SERVER`. Мок-тесты: fetch-заглушки, KV на Map, вызовы `worker.fetch` / `worker.scheduled`.
+
+## Cron (Cloudflare → frightclub-tg → Settings → Trigger events → Cron triggers → + Add → Cron expression)
+Время в UTC, МСК = UTC+3; поля: минута час число месяц день-недели, `*` = любое.
+- `41 6 * * *` — 09:41 МСК, **полная подборка**. По этой строке код узнаёт подборку (`DIGEST_CRON`).
+- `41 12 * * *` и `41 18 * * *` — 15:41 и 21:41 МСК, «📰 Новости хоррора»: только то, что ещё не отправлялось; нового нет — молчит. Любое другое расписание тоже шлёт новости — время новостей можно менять без кода.
+
+## Содержимое подборки (1.7.x)
+- 🎬 Релизы: TMDB discover, жанр 27, хорроры с релизом в этот день в США (ограниченный прокат / кино / цифра); берутся 10 кандидатов, до 8 в подборке. Описание по-русски: TMDB ru, иначе Gemini пакетом, иначе первая фраза английского (или перевод Workers AI при биндинге AI). Оценки IMDb · RT · MC из OMDb.
+- 🏆 Фестивали из TMDB (поле note у дат релиза) и награды из OMDb (только общее число побед/номинаций; какие именно — OMDb не знает, подробности — веб-поиском).
+- Фильтр: короткий метр (<60 мин) — только с крупного фестиваля (Fantasia, Sitges, Fantastic Fest, Bucheon, FrightFest, Sundance и т.п., список `MAJOR_FEST_RE`), с пометкой «короткий метр»; ноль голосов TMDB отсекается, только если нет и IMDb-страницы (в день релиза голосов нет почти ни у кого — Silt/Dual чуть не потерялись).
+- Открытый вопрос (Тимур не решил): жанр «ужасы» может стоять не первым (Aakhri Ride — криминал/драма/ужасы, Felix Motel — анимация) — фильтровать ли строже.
+- 📰 Новости: до 5 в подборке. Gemini пишет по-русски одну строку-суть и делит на 🔥 главное (трейлеры, даты релиза, сделки, анонсы, кастинг, продления, сборы, фестивальные победители) и второстепенное (подборки, «пересмотреть», рецензии, мерч/4K, слухи, игры). В подборке главное первым с 🔥, в новостях 15:41/21:41 — два блока. Нет Gemini — обычный список.
+- ▶️ Трейлеры дня (только с YOUTUBE_API_KEY): YouTube «horror trailer» за сутки, 3 самых просматриваемых; только каналы студий/стримингов/трейлерных (TRAILER_CHANNELS в коде + переменная), без игр, геймплея, фан-трейлеров, реакций и дублей; нет подходящих — блока нет.
+
+## Надёжность и бюджет запросов
+- Повторы с таймаутом к TMDB/OMDb/лентам (OMDb «Error getting data» с кодом 200 тоже повторяется; нет оценок — строка не выводится); один упавший фильм или лента не роняет подборку.
+- Сбой → алерт ⚠️ в личку (ALERT_CHAT_ID или DIGEST_CHAT_ID), метка снимается — можно перезапустить вручную.
+- Лимит Cloudflare (бесплатный план): 50 запросов наружу за один запуск, каждый повтор fetchRetry тоже считается. На этом упала 1.7.3 («Too many subrequests»). Сейчас подборка ~27, худший случай ~41.
+- Ключи в `TIKTOK_KV`: `digest:sent:<дата>`, `news:sent:<дата>:<час>`, `news:seen` (отправленные ссылки, 4 дня), `reddit:token`, `log:<дата>:<время>:<digest|news>` (архив отправленного, 30 дней — читается `digest_history`).
+
+## Ручной запуск
+`horror_digest` (без send — только текст; `send: true` — в личку, раз в день; `force: true` — повторно), `horror_news` с `send: true` (и `force`).
+
+## Reddit
+- Заявка на Data API подана 31.10.2026: support.reddithelp.com → Submit a request → Data Access Request → I'm a developer → «Reddit App that does not work in the Devvit ecosystem»; аккаунт u/tunetim; ответ — на почту Тимура, от дней до недель, бывает без ответа. Создание приложения (reddit.com/prefs/apps) закрыто до одобрения. Неавторизованный `.json` не работает с мая 2026; reddit.com из песочницы не открывается.
+- После одобрения: script-приложение `frightclub-reader`, redirect `http://localhost:8080`, about url `https://t.me/frightclub88` → переменные REDDIT_CLIENT_ID / REDDIT_CLIENT_SECRET / REDDIT_USERNAME → появятся `reddit_top`, `reddit_search`, `reddit_post`.
+- Заявлено: только чтение хоррор-сабов (nosleep, LetsNotMeet, Thetruthishere, shortscarystories, creepyencounters, scarystories, TrueScaryStories, HorrorStories, creepypasta, Paranormal, Glitch_in_the_Matrix, UnresolvedMysteries) и киносабов (horror, movies, TrueFilm, flicks, Filmmakers, cinematography, boxoffice) — для идей сценариев, учёбы и тем канала, без хранения и обучения моделей.
+
+## ИИ-агент в @horrordigestbot (с 1.8.0)
+- Зачем: Тимур хочет развивать не бота, а ИИ-агента, и сам учится строить агентов; требование — не быть привязанным к модели.
+- Устройство: Telegram-вебхук `POST /tg/agent` (секрет — производный от MCP_KEY, заголовок x-telegram-bot-api-secret-token) → отвечает только чату DIGEST_CHAT_ID → цикл Gemini function calling до 6 шагов → ответ (HTML, при ошибке разметки — простым текстом).
+- Инструменты агента (только чтение): tmdb_search/details/list, movie_ratings, horror_news, youtube_search/comments, archive_search/item, digest_history + save_note/delete_note. Инструментов публикации нет (зашито в коде).
+- Модель: AGENT_MODEL или `gemini-flash-latest`; при 503/429/таймауте — GEMINI_MODEL (lite) до конца ответа. Переключение на Claude API/OpenRouter — следующий шаг, если ответов не хватит (Тимур выбрал бесплатный Flash).
+- Память в AGENT_KV: `agent:history` (последние 16 реплик, 14 дней), `agent:notes` (до 50 заметок «запомни: …»), `agent:upd:<id>` (защита от повторной обработки вебхука). Команды бота: /new — забыть разговор, /notes — заметки, /help.
+- Включение: `agent_setup` (setWebhook + команды; `disable: true` — выключить; сбрасывает необработанные сообщения — drop_pending_updates). Проверка без Telegram: `agent_ask` (возвращает answer, model, used — какие инструменты вызвал; пишет в ту же историю).
+- Статус на 2.11.2026: агент включён (1.10.0, вебхук `https://frightclub-tg.flyyyyy92.workers.dev/tg/agent`), Тимур пишет ему в @horrordigestbot.
+- История: «bad webhook: Failed to resolve host» — сбой DNS на стороне Telegram (31.10.2026 трижды подряд, через пару часов прошло само; адрес в коде верный). Режим опроса (getUpdates по cron `* * * * *`) делали в 1.8.1 и убрали по решению Тимура; надёжная альтернатива на будущее — свой домен на Cloudflare для воркера.
+- Дорожная карта (выбор Тимура позже): кнопки «в пост / мимо» под новостями (отметки в память) → черновик пятничного «что вышло на неделе» → утренний «думающий» агент вместо жёсткой подборки → команды /film, алерты фестивалей, лог роста подписчиков. Для агентных циклов на десятки запросов нужен Workers Paid ($5/мес).
