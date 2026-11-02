@@ -2,7 +2,7 @@
 """
 Проверка поста frightclub перед превью Тимуру — формальные правила канала, без ИИ.
 
-  python3 tools/check_post.py post.txt [--platform tg|tiktok] [--rubric история] [--image URL] [--json]
+  python3 tools/check_post.py post.txt [--platform tg|tiktok] [--rubric история] [--image URL] [--facts-checked] [--json]
   cat post.txt | python3 tools/check_post.py - --platform tg
 
 ОШИБКА (exit 1) — пост в таком виде не отправлять, исправить.
@@ -75,7 +75,7 @@ def tg_len(text):
     return len(plain.encode("utf-16-le")) // 2, plain
 
 
-def check(text, platform="tg", rubric="", image=""):
+def check(text, platform="tg", rubric="", image="", facts=False):
     errors, warns, passed = [], [], []
     text = text.strip("\n")
     n, plain = tg_len(text)
@@ -142,7 +142,8 @@ def check(text, platform="tg", rubric="", image=""):
             passed.append("карточка по хэшу")
 
     ok = not errors
-    summary = "✅ проверено: " + " · ".join(passed + ["факты сверены заново"]) if ok else ""
+    summary = ("✅ проверено: " + " · ".join(passed + (["факты сверены заново"] if facts else [])) +
+               ("" if facts else " · ⚠️ факты не сверены")) if ok else ""
     return {"ok": ok, "length": n, "errors": errors, "warnings": warns, "summary": summary}
 
 
@@ -152,10 +153,12 @@ def main():
     ap.add_argument("--platform", choices=["tg", "tiktok"], default="tg")
     ap.add_argument("--rubric", default="")
     ap.add_argument("--image", default="", help="ссылка на карточку")
+    ap.add_argument("--facts-checked", action="store_true",
+                    help="факты действительно сверены инструментами (tmdb_details, movie_ratings) — иначе в итоге будет пометка")
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args()
     text = sys.stdin.read() if a.file == "-" else open(a.file, encoding="utf-8").read()
-    r = check(text, a.platform, a.rubric, a.image)
+    r = check(text, a.platform, a.rubric, a.image, a.facts_checked)
     if a.json:
         print(json.dumps(r, ensure_ascii=False, indent=2))
     else:
