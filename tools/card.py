@@ -100,7 +100,7 @@ DEFAULTS = {1: (150, 54, 930), 2: (120, 50, 850), 3: (110, 68, 780)}
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--img'); ap.add_argument('--sub', default='')
-    ap.add_argument('--variants', nargs='+', help='путь::подпись для каждого варианта')
+    ap.add_argument('--variants', nargs='+', help='путь::подпись[::кадрирование, напр. "75%% 50%%"] для каждого варианта')
     ap.add_argument('--rubric', required=True); ap.add_argument('--title', required=True)
     ap.add_argument('--rt'); ap.add_argument('--out', required=True)
     ap.add_argument('--layout', choices=['frame', 'poster'], default='frame')
@@ -117,8 +117,8 @@ def main():
     if a.variants:
         items = []
         for i, v in enumerate(a.variants, 1):
-            img, _, sub = v.partition('::')
-            items.append((card_html(img, a.rubric, title, sub or a.sub, **kw), f'{a.out}-{i}'))
+            img, sub, pos = (v.split('::') + ['', ''])[:3]
+            items.append((card_html(img, a.rubric, title, sub or a.sub, **{**kw, 'pos': pos or a.pos}), f'{a.out}-{i}'))
         render_many(items); sheet([o + '_prev.png' for _, o in items], a.out + '-sheet.png')
         print('\n'.join(o + '.jpg' for _, o in items)); print(a.out + '-sheet.png')
     else:
