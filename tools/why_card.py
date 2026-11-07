@@ -1,7 +1,7 @@
 """Карточка «почему страшно» — шаблон по «пустому кадру» (31.10.2026), утверждён 7.11.2026.
 python3 tools/why_card.py <кадр.jpg> "<ТЕМА>" "<номер части или ''>" cards/<YYYY-MM-DD-why-...>
 Раскладка: вверху FRIGHTCLUB / РАЗБОР; широкий кадр 972×418 (top 292, left 54, наклон −0.8°);
-«ПОЧЕМУ СТРАШНО» 170px с надрезом (top 950); тема красным 95.5px (top 1110); номер — светлая плашка с наклоном.
+«ПОЧЕМУ СТРАШНО» 170px с надрезом (top 950); тема красным 95.5px (top 1110); номер — тоже красным, тем же кеглем.
 Без рейтинга и без подписи «кадр: …».
 Крупный кадр (как «звук 1»): 6-й аргумент "top:120px;left:56px;width:968px;height:760px", pos "55% 50%"."""
 import sys, pathlib; sys.path.insert(0, str(pathlib.Path(__file__).parent))
@@ -9,8 +9,7 @@ import card as C
 def html(img, topic, num='', pos='50% 45%', box='top:292px;left:54px;width:972px;height:418px'):
     data, _ = C.treat(img)
     T = "font-family:T;line-height:.85;text-transform:uppercase;white-space:pre"
-    n = (f'<span style="{T};font-size:95.5px;color:#0B0B0C;background:#E8E2D6;padding:4px 16px 0;margin-left:18px;'
-         f'transform:rotate(-3deg);display:inline-block">{num}</span>') if num else ''
+    n = (f'<span style="{T};font-size:95.5px;color:#C1121F;margin-left:26px;display:inline-block">{num}</span>') if num else ''
     return (f'<div class="card"><div class="mark"><b>frightclub</b><span>разбор</span></div>'
         f'<div style="position:absolute;{box};transform:rotate(-.8deg);box-shadow:0 30px 60px rgba(0,0,0,.6),0 0 0 1px #2a2a2c">'
         f'<img src="data:image/jpeg;base64,{data}" style="width:100%;height:100%;display:block;object-fit:cover;object-position:{pos}"></div>'
