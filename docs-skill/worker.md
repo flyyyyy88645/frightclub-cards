@@ -14,7 +14,8 @@
   - `DIGEST_BOT_TOKEN` (Secret) — второй бот **@horrordigestbot**: подборка, новости, алерты и агент. Если он не может написать (не нажат Start) — сообщение уходит через @frightclubai с пометкой ⚠️.
   - `GEMINI_API_KEY` (Secret) — Gemini API, проект `frightclub` в Google Cloud; ключ «gemini-worker» привязан к сервисному аккаунту (так требует Google). Создаётся в APIs & Services → Credentials → API key → restriction Gemini API, а не в AI Studio (там «permission denied»).
   - `GEMINI_MODEL` (Text) = `gemini-flash-lite-latest` — для подборки (полная flash днём часто 503/таймаут).
-  - `AGENT_MODEL` (Text, необязательно) — модель агента, по умолчанию `gemini-flash-latest`.
+  - `AGENT_MODEL` (Text, необязательно) — модель агента на Gemini, по умолчанию `gemini-flash-latest` (с 1.12.0 — запасная).
+- С 1.12.0 (7.11.2026): `MIMO_API_KEY` (Secret) — ключ Xiaomi MiMo (platform.xiaomimimo.com, ключ `frightclub`, баланс общий с reviews-agent); с ним агент отвечает на MiMo. `MIMO_MODEL` (Text, необязательно) — по умолчанию `mimo-v2.6-flash`.
   - `TRAILER_CHANNELS` (Text, необязательно) — доп. каналы для трейлеров через запятую.
   - Биндинг KV `AGENT_KV` → namespace `frightclub-agent` (память агента; отдельно от TIKTOK_KV).
 - Ключ YouTube — «API key 1» в том же проекте Google Cloud. Как получить: console.cloud.google.com → проект → APIs & Services → Library → YouTube Data API v3 → Enable → Credentials → Create credentials → API key → API restrictions: только YouTube Data API v3 → в Cloudflare `YOUTUBE_API_KEY` (Secret). Квота 10 000 единиц/день, поиск = 100.
@@ -24,6 +25,7 @@
 
 Последние версии:
 - **1.11.0** (3.11.2026) — отправка без `chat_id` в личку, а не в канал; правка/удаление/закреп требуют `chat_id`; предупреждения в описаниях инструментов (`movie_ratings` — искать по `tmdb_id`, `agent_setup` — сбрасывает необработанные сообщения, три новостных инструмента — какой для чего); по умолчанию `news_week` 30 новостей (было 80), `youtube_transcript` 8000 символов (было 20000); убрана подсказка «указывай источник TMDB»; переменная `PREVIEW_CHAT_ID`.
+- **1.12.0** (7.11.2026) — агент на Xiaomi MiMo (`mimo-v2.6-flash`, протокол OpenAI: tools/tool_calls, `thinking: disabled`), Gemini — запасной: любая ошибка MiMo (баланс, 5xx, таймаут, пустой ответ) → ответ доделывает Gemini. Результаты инструментов кэшируются на время ответа — при переходе на Gemini повторных запросов наружу нет, заметка не пишется дважды. `agent_ask` отдаёт `model` с приставкой (`mimo:`/`gemini:`) и `mimo_error`, если был переход. Подборка и новости — без изменений, на Gemini lite.
 - **1.11.1** (3.11.2026) — удалён код Reddit (инструменты, токен, схемы). Последняя версия с ним — 1.10.0; в GitHub её нет — только файлом у Тимура, если он сохранил.
 
 ## Cron (Cloudflare → frightclub-tg → Settings → Trigger events → Cron triggers → + Add → Cron expression)
@@ -56,7 +58,7 @@
 - Зачем: Тимур хочет развивать не бота, а ИИ-агента, и сам учится строить агентов; требование — не быть привязанным к модели.
 - Устройство: Telegram-вебхук `POST /tg/agent` (секрет — производный от MCP_KEY, заголовок x-telegram-bot-api-secret-token) → отвечает только чату DIGEST_CHAT_ID → цикл Gemini function calling до 6 шагов → ответ (HTML, при ошибке разметки — простым текстом).
 - Инструменты агента (только чтение): tmdb_search/details/list, movie_ratings, horror_news, news_week, youtube_search/comments/transcript, archive_search/item, digest_history + save_note/delete_note. Ответ каждого инструмента агент обрезает до 8000 символов. Инструментов публикации нет (зашито в коде).
-- Модель: AGENT_MODEL или `gemini-flash-latest`; при 503/429/таймауте — GEMINI_MODEL (lite) до конца ответа. Переключение на Claude API/OpenRouter — следующий шаг, если ответов не хватит (Тимур выбрал бесплатный Flash).
+- Модель (с 1.12.0, решение Тимура 7.11): основная — MiMo (`MIMO_MODEL`, ключ `MIMO_API_KEY`); запасная — Gemini: AGENT_MODEL или `gemini-flash-latest`, при 503/429/таймауте — GEMINI_MODEL (lite). Без `MIMO_API_KEY` — как раньше, только Gemini. Цикл MiMo — до 6 шагов, на последнем без инструментов. Цена MiMo Flash $0.14/$0.28 за 1M — ответ агента ≈ доли цента.
 - Память в AGENT_KV: `agent:history` (последние 16 реплик, 14 дней), `agent:notes` (до 50 заметок «запомни: …»), `agent:upd:<id>` (защита от повторной обработки вебхука). Команды бота: /new — забыть разговор, /notes — заметки, /help.
 - Включение: `agent_setup` (setWebhook + команды; `disable: true` — выключить; сбрасывает необработанные сообщения — drop_pending_updates). Проверка без Telegram: `agent_ask` (возвращает answer, model, used — какие инструменты вызвал; пишет в ту же историю).
 - Статус на 3.11.2026: агент включён (1.11.1, вебхук `https://frightclub-tg.flyyyyy92.workers.dev/tg/agent`), Тимур пишет ему в @horrordigestbot.
