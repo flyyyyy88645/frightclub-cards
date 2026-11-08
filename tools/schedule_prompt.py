@@ -33,7 +33,9 @@ def main():
     ap.add_argument('--when', required=True, help='"YYYY-MM-DD HH:MM" по Москве')
     a = ap.parse_args()
     if not re.search(r'frightclub-cards/[0-9a-f]{40}/', a.image):
-        sys.exit('ОШИБКА: ссылка на карточку должна быть с хэшем коммита, не main')
+        if re.search(r'frightclub-cards/[0-9a-f]{7,39}/', a.image):
+            sys.exit('ОШИБКА: в ссылке короткий хэш — нужен полный, 40 символов (git rev-parse HEAD)')
+        sys.exit('ОШИБКА: ссылка на карточку должна быть с полным хэшем коммита (40 символов), не main')
     caption = open(a.post, encoding='utf-8').read().strip()
     if len(caption.encode('utf-16-le')) // 2 > 1024 + 2 * caption.count('<'):  # грубая страховка; точная — check_post.py
         print('ВНИМАНИЕ: подпись может быть длиннее 1024 — прогони check_post.py', file=sys.stderr)

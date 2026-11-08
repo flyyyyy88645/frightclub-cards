@@ -71,7 +71,7 @@ def render(html, out):
 
 ## Файлы и ссылки
 - Имя: `cards/YYYY-MM-DD-<рубрика>-<фильм>.jpg`; для «хоррора на вечер» рубрика — `evening` (напр. `2026-11-03-evening-wrongturn.jpg`).
-- Ссылка для Telegram — с хэшем коммита: `https://raw.githubusercontent.com/flyyyyy88645/frightclub-cards/<sha>/cards/<file>.jpg`. Telegram кэширует картинку по URL: по ссылке на main может показать старую версию.
+- Ссылка для Telegram — с хэшем коммита: `https://raw.githubusercontent.com/flyyyyy88645/frightclub-cards/<sha>/cards/<file>.jpg`, `<sha>` — полный хэш из 40 символов (`git rev-parse HEAD`); короткий скрипты не примут. Telegram кэширует картинку по URL: по ссылке на main может показать старую версию.
 - Публикация в репо: клон `--depth 1` → файл → коммит → `git fetch origin main` → push в main.
 
 ## Параметры раскладки

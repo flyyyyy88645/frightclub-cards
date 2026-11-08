@@ -136,10 +136,15 @@ def check(text, platform="tg", rubric="", image="", facts=False):
     if image:
         if "raw.githubusercontent.com" in image and re.search(r"/main/|/master/", image):
             errors.append("ссылка на карточку через main — нужен хэш коммита (Telegram кэширует старую картинку)")
-        elif "raw.githubusercontent.com" in image and not re.search(r"/[0-9a-f]{7,40}/", image):
+        elif "raw.githubusercontent.com" in image and re.search(r"/[0-9a-f]{40}/", image):
+            passed.append("карточка по хэшу")
+        elif "raw.githubusercontent.com" in image and re.search(r"/[0-9a-f]{7,39}/", image):
+            errors.append("короткий хэш в ссылке на карточку — нужен полный, 40 символов (git rev-parse HEAD); "
+                          "schedule_prompt.py короткий не примет")
+        elif "raw.githubusercontent.com" in image:
             warns.append("в ссылке на карточку не видно хэша коммита")
         else:
-            passed.append("карточка по хэшу")
+            warns.append("карточка не из frightclub-cards — хэш не проверен")
 
     ok = not errors
     summary = ("✅ проверено: " + " · ".join(passed + (["факты сверены заново"] if facts else [])) +
